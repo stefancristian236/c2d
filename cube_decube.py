@@ -158,3 +158,12 @@ def decube(fits_path_image, sensor_layout, tile_x, tile_y):
     
     hdul.writeto('decubed_image.fits', overwrite=True)
     hdul.close()
+    
+    
+def cut_data(data, centerX, centerY, sizeX, sizeY):
+    center = (centerX, centerY)
+    size = (sizeX, sizeY)
+    
+    new_data = Cutout2D(data, center, size)
+    
+    return new_data.data

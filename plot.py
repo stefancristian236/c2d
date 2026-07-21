@@ -6,7 +6,7 @@ from scipy.interpolate import splprep, splev
 #    [{"x": -, "y": -, "label": -, }]
 
 
-def smooth_spline(x, y, window_len=11, poly_order=2, smooth_s=0.05, n_points=500):
+def smooth_spline(x, y, window_len=11, poly_order=2, smooth_s=0.05, n_points=1000):
     order = np.argsort(x)
     x, y = np.asarray(x)[order], np.asarray(y)[order]
         
@@ -19,8 +19,8 @@ def smooth_spline(x, y, window_len=11, poly_order=2, smooth_s=0.05, n_points=500
         
     return x, y, x_fine, y_fine
 
-def plot_series(ax, x, y, data_points, spline_points, label=None, color=None, scale_x=1.0, **smooth_kwargs):
-    x, y, x_fine, y_fine = smooth_spline(np.asarray(x) * scale_x, y, **smooth_kwargs)
+def plot_series(ax, x, y, data_points, spline_points, label=None, color=None, scale_x=1.0):
+    x, y, x_fine, y_fine = smooth_spline(np.asarray(x) * scale_x, y)
     
     if data_points:
         ax.plot(x, y, 'o', color=color, alpha=0.8, label=f'{label} (data)' if label else 'Data') 
@@ -52,15 +52,29 @@ def make_plot(datasets, title=None, xlabel=None, ylabel=None, figsize=(8, 5),
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.grid(True, alpha=0.5, color='gray')
-    ax.legend()
+    
+    if show_data == True or show_spline == True:
+        ax.legend()
     return fig, ax
 
-def make_grid(datasets, ncols=2, title=None, xlabel=None, ylabel=None, figsize=(12,8)):
-    nrows = -(-len(datasets) // ncols)
-    fig, axes = plt.subplots(nrows, ncols, figsize, squeeze=False)
+def make_grid(datasets, ncols=2, title=None, xlabel=None, ylabel=None, figsize=(12,8), show_data=True, show_spline=True):
+    nrows = int(len(datasets)) // ncols
+    fig, axes = plt.subplots(nrows, ncols, figsize = figsize, squeeze= False)
         
     for ax, d in zip(axes.flat, datasets):
-        plot_series(ax, d["x"], d["y"], label=d.get("label"), color=d.get("color"))
+        plot_data = d.get('data_points', show_data)
+        plot_fit = d.get('spline_points', show_spline)
+        
+        plot_series(
+            ax, 
+            d["x"], 
+            d["y"], 
+            data_points=plot_data, 
+            spline_points=plot_fit, 
+            label=d.get("label"), 
+            color=d.get("color")
+        )
+        
         ax.set_title(d.get("label"))
         ax.grid(True, alpha=0.5)
         ax.legend()
