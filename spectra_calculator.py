@@ -23,7 +23,6 @@ def extract_dataset(data, wl):
        
 def extract_sample(sample_size, dataset):
     sample = random.sample(dataset, min(sample_size, len(dataset)))
-    
     return sample
 
 def all_spectra_median(dataset):
