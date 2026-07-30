@@ -6,7 +6,13 @@ from scipy.interpolate import splprep, splev
 #    [{"x": -, "y": -, "label": -, }]
 
 
-def smooth_spline(x, y, window_len=11, poly_order=2, smooth_s=0.05, n_points=1000):
+def smooth_spline(x: np.ndarray, 
+                  y: np.ndarray, 
+                  window_len=11, 
+                  poly_order=2, 
+                  smooth_s=0.05, 
+                  n_points=1000) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    
     order = np.argsort(x)
     x, y = np.asarray(x)[order], np.asarray(y)[order]
         
@@ -19,7 +25,15 @@ def smooth_spline(x, y, window_len=11, poly_order=2, smooth_s=0.05, n_points=100
         
     return x, y, x_fine, y_fine
 
-def plot_series(ax, x, y, data_points, spline_points, label=None, color=None, scale_x=1.0):
+def plot_series(ax: plt.Axes, 
+                x: np.ndarray, 
+                y: np.ndarray, 
+                data_points: bool, 
+                spline_points: bool, 
+                label=None, 
+                color=None, 
+                scale_x=1.0) -> tuple[np.ndarray, np.ndarray]:
+    
     x, y, x_fine, y_fine = smooth_spline(np.asarray(x) * scale_x, y)
     
     if data_points:
@@ -30,8 +44,13 @@ def plot_series(ax, x, y, data_points, spline_points, label=None, color=None, sc
         ax.plot(x_fine, y_fine, '--', color=color)
     return x, y
 
-def make_plot(datasets, title=None, xlabel=None, ylabel=None, figsize=(8, 5), 
-              show_data=True, show_spline=True):
+def make_plot(datasets: list[dict], 
+              title=None, 
+              xlabel=None, 
+              ylabel=None, 
+              figsize=(8, 5), 
+              show_data=True,
+              show_spline=True) -> tuple[plt.Figure, plt.Axes]:
     
     fig, ax = plt.subplots(figsize=figsize)
     for d in datasets:
@@ -57,7 +76,15 @@ def make_plot(datasets, title=None, xlabel=None, ylabel=None, figsize=(8, 5),
         ax.legend()
     return fig, ax
 
-def make_grid(datasets, ncols=2, title=None, xlabel=None, ylabel=None, figsize=(12,8), show_data=True, show_spline=True):
+def make_grid(datasets: list[dict], 
+              ncols=2, 
+              title=None,
+              xlabel=None, 
+              ylabel=None, 
+              figsize=(12,8), 
+              show_data=True, 
+              show_spline=True) -> tuple[plt.Figure, np.ndarray]:
+    
     nrows = int(len(datasets)) // ncols
     fig, axes = plt.subplots(nrows, ncols, figsize = figsize, squeeze= False)
         
