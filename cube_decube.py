@@ -1,5 +1,13 @@
 from astropy.nddata import Cutout2D
 import numpy as np
+from . import cutout as cut
+
+#### a set of functions meant to automate the process of cubbing and decubbing data
+#### get_tile_wavelengths - extract all the n numbers if wavelength using the sensor layout of the camera
+#### cub - perform the cubbing -> packs all data from a 2d arry into a 3d array h x w x wl
+#### decube - perform the inverse of cubing by uncpacking the 3d array into a 2d array
+#### pipeline - a function meant to perform all all actions at once
+
 
 def get_tile_wavelengths(sensor_layout: np.ndarray, 
                          tile_x: int, 
@@ -77,13 +85,6 @@ def decube(cube_data: np.ndarray,
 
     return image_recon
 
-
-def cut_data(data: np.ndarray, 
-             center: tuple, 
-             size: tuple):
-    
-    return Cutout2D(data, center, size).data
-
 def run_pipeline(
     mode: str, 
     data: np.ndarray, 
@@ -97,7 +98,7 @@ def run_pipeline(
     mode = mode.strip().lower()
 
     if crop_center is not None and crop_size is not None:
-        data = cut_data(data, crop_center, crop_size)
+        data = cut.cut_image(data, crop_center, crop_size)
     elif crop_center is not None or crop_size is not None:
         raise ValueError("Both 'crop_center' and 'crop_size' must be provided to crop the data.")
     if mode == 'cube':
