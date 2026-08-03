@@ -6,9 +6,9 @@ from . import interp_compare as i_c
 
 def extract_parameters() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     #import .fits images
-    mars_interp_cube_path = '/home/stefan/Projects/ISS/Trainship/TASKS/TASK2/entry3/assets/HS-L0-FE-025D-05-01_1C_de2.fits'
-    sensor_layout = '/home/stefan/Projects/ISS/Trainship/TASKS/TASK2/entry3/assets/CRS-HERA-SW101-HyperScout-H-detector-per-pixel-central-wavelength-map.fits'
-    mars_not_interp_cube_path = '/home/stefan/Projects/ISS/Trainship/TASKS/TASK2/entry3/assets/HS-L0-FE-025D-05-01_1C_cube.fits'
+    mars_interp_cube_path = '/home/stefan/projects/ISS/Trainship/TASKS/TASK3/assets/HS-L0-FE-025D-05-01_1C_de2.fits'
+    sensor_layout = '/home/stefan/projects/ISS/Trainship/TASKS/TASK3/assets/CRS-HERA-SW101-HyperScout-H-detector-per-pixel-central-wavelength-map.fits'
+    mars_not_interp_cube_path = '/home/stefan/projects/ISS/Trainship/TASKS/TASK3/assets/HS-L0-FE-025D-05-01_1C_cube.fits'
     #open fits files
     with fits.open(mars_interp_cube_path) as hdul:
         inter_cube_data = np.stack(

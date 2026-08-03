@@ -3,15 +3,23 @@ import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 from scipy.interpolate import splprep, splev
 
+########## dict format for input:
+
 #    [{"x": -, "y": -, "label": -, }]
 
 
+############################################33
+
+
+
+#################### apply Savitzky-Golay fitler on data
+#################### apply spline interpolation on savgol data 
 def smooth_spline(x: np.ndarray, 
                   y: np.ndarray, 
                   window_len=11, 
                   poly_order=2, 
                   smooth_s=0.05, 
-                  n_points=1000) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+                  n_points=1000) -> tuple[np.ndarray[float], np.ndarray[float], np.ndarray[float], np.ndarray[float]]:
     
     order = np.argsort(x)
     x, y = np.asarray(x)[order], np.asarray(y)[order]
@@ -25,6 +33,10 @@ def smooth_spline(x: np.ndarray,
         
     return x, y, x_fine, y_fine
 
+##############################################################################################
+
+####### main plotting function
+## gets data as input and process with smoothing and ploting the data
 def plot_series(ax: plt.Axes, 
                 x: np.ndarray, 
                 y: np.ndarray, 
@@ -43,7 +55,17 @@ def plot_series(ax: plt.Axes,
     if spline_points == 0 and data_points == 0:
         ax.plot(x_fine, y_fine, '--', color=color)
     return x, y
+#################################################################################################
 
+##### main plot generator
+##### gets as input a list of dictioanry containg the data going to be plotted
+##### list size = 1 -> one plot
+##### list size > 1 -> overlapping plots 
+
+#### future note:
+    #### add removal of data points -> to only keep the curve
+    #### add non smoothing visualisation
+    #### implememnt using keywork arguments
 def make_plot(datasets: list[dict], 
               title=None, 
               xlabel=None, 
@@ -76,6 +98,9 @@ def make_plot(datasets: list[dict],
         ax.legend()
     return fig, ax
 
+#########################################################################################33
+
+##### if needed plot everything on a different graph instead of overlaying
 def make_grid(datasets: list[dict], 
               ncols=2, 
               title=None,

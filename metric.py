@@ -1,10 +1,13 @@
 import numpy as np
 
+
+#### standart deviation formula
 def rmse(array : np.array) -> float:
-    
     n_elem = np.size(array)
     return np.sqrt(np.sum(np.square(array - np.mean(array))) / n_elem)
 
+
+#### apply rmse macropixel level
 def macropixel_error(arr : np.array) -> tuple[np.float64, np.float64, np.float64, np.float64]:
     
     err = np.zeros((arr.shape[0], arr.shape[1]))

@@ -75,7 +75,7 @@ def laplacian_fitting(arr : np.ndarray[float]):
 ###############################################################################################
 
 
-def generalised_gaussian_fitting(arr : np.ndarray[float]):
+def generalised_gaussian_fitting(arr : np.ndarray[float]) -> tuple[Figure, Axes]:
     
     #### direcotry initiliszation
     ### verify if the directory exists otherwise create it
