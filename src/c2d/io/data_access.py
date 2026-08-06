@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
-from . import interp_compare as i_c
+from .. import interp_compare as i_c
 
 
 def extract_parameters() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:

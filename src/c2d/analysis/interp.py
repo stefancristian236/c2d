@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.spatial import cKDTree
 import matplotlib.pyplot as plt
-from . import cutout as cut
-from . import plot as plt2
+from .. import cutout as cut
+from .. import plot as plt2
 
 def reduce_interp(interpolated_cube : np.ndarray, 
                   non_interpolated_cube : np.ndarray, 
