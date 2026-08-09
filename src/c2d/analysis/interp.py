@@ -1,178 +1,226 @@
+from pathlib import Path
 import numpy as np
-from scipy.spatial import cKDTree
 import matplotlib.pyplot as plt
 from .. import cutout as cut
-from .. import plot as plt2
 
-def reduce_interp(interpolated_cube : np.ndarray, 
-                  non_interpolated_cube : np.ndarray, 
-                  tile_x : int, 
-                  tile_y : int) -> np.ndarray:
+# define output directories
+OUT_DIR = Path("../../out/plots/analysis")
+
+
+# veriy path
+def _ensure_out_dir(dir_path: Path = OUT_DIR) -> Path:
+    dir_path.mkdir(parents=True, exist_ok=True)
+    return dir_path
+
+
+# ---------------------------------------------------------------------------
+# cube reduction
+# ---------------------------------------------------------------------------
+
+def reduce_block_median(
+    interpolated_cube: np.ndarray,
+    non_interpolated_cube: np.ndarray,
+    tile_x: int,
+    tile_y: int,
+) -> np.ndarray:
+    
+    """
+    perform the reduction fo interpolated cube
+    from h x w x tile_x * tile_y -> h / tile_x x w / tile_y x tile_x * tile_y
+    """
     
     h, w, bands = interpolated_cube.shape
-    small_h, small_w = non_interpolated_cube.shape[0], non_interpolated_cube.shape[1]
-    
+    small_h, small_w = non_interpolated_cube.shape[:2]
+
     pad_h = (small_h * tile_x) - h
     pad_w = (small_w * tile_y) - w
-    
-    padded_data = np.pad(
+    if pad_h < 0 or pad_w < 0:
+        raise ValueError(
+            f"interpolated_cube ({h}x{w}) is larger than "
+            f"non_interpolated_cube * tile ({small_h * tile_x}x{small_w * tile_y})"
+        )
+
+    padded = np.pad(
         interpolated_cube,
         pad_width=((0, pad_h), (0, pad_w), (0, 0)),
-        mode='constant',
-        constant_values=np.nan
+        mode="constant",
+        constant_values=np.nan,
     )
-    
-    reshaped_data = padded_data.reshape(small_h, tile_x, small_w, tile_y, bands)
-    reduced_interp_cube = np.nanmedian(reshaped_data, axis = (1, 3))
-    
-    return reduced_interp_cube
 
-def extract_wl_median(cube : np.ndarray, 
-                      wl : np.ndarray, 
-                      output_filepath : str) -> np.array:
-    
-    arr = np.zeros(cube.shape[2])
-    
-    output_file = open(output_filepath, 'w') if output_filepath else None
-    
-    try:
-        for band in range(cube.shape[2]):
-            median_val = np.median(cube[:, :, band])
-            if wl is not None:
-                line = f'band = {band} / {wl[band]} has median = {median_val}\n'
-            else:
-                line = f'band = {band} has median = {median_val}\n'
-            print(line, end='')
-            if output_file:
-                output_file.write(line)
-                
-            arr[band] = median_val
-    finally:
-        if output_file:
-            output_file.close()
-            
-    return arr  
+    reshaped = padded.reshape(small_h, tile_x, small_w, tile_y, bands)
+    return np.nanmedian(reshaped, axis=(1, 3))
 
-def extract_max_min_wl_value(wl : np.array, 
-                             cube : np.array) -> tuple:
-    
-    band_maxs = np.nanmax(cube, axis = (0, 1))
-    band_mins = np.nanmin(cube, axis = (0, 1))
+
+# ---------------------------------------------------------------------------
+# per-band statistics
+# ---------------------------------------------------------------------------
+
+def per_band_median(
+    cube: np.ndarray,
+    wl: np.ndarray | None = None,
+    output_filepath: str | None = None,
+) -> np.ndarray:
+    """
+    iterate trough the cube 
+    perform median on every tile_x * tile_y level
+    """
+    medians = np.median(cube, axis=(0, 1))
+
+    lines = [
+        f"band = {b} / {wl[b]} has median = {medians[b]}\n" if wl is not None
+        else f"band = {b} has median = {medians[b]}\n"
+        for b in range(cube.shape[2])
+    ]
+    print("".join(lines), end="")
+
+    if output_filepath:
+        with open(output_filepath, "w") as f:
+            f.writelines(lines)
+
+    return medians
+
+
+def band_extremes(cube: np.ndarray, wl: np.ndarray) -> tuple:
+    """
+    extract:
+    the coresponding indices of extremes
+    return the indices and corespong wavelenghts of:
+    maximum and minimum values
+    """
+    band_maxs = np.nanmax(cube, axis=(0, 1))
+    band_mins = np.nanmin(cube, axis=(0, 1))
     max_idx = np.argmax(band_maxs)
     min_idx = np.argmin(band_mins)
     return wl[max_idx], wl[min_idx], max_idx, min_idx
 
-def layer_analysis_mean (cube : np.array) -> np.array:
-    per_layer_mean = np.mean(
-        cube, axis = (0, 1)
-    )
-    return np.sum(cube > per_layer_mean, axis = (0, 1))    
+
+def count_above_mean_per_band(cube: np.ndarray) -> np.ndarray:
+    """
+    return the number of values > than mean values
+    """
+    per_layer_mean = np.mean(cube, axis=(0, 1))
+    return np.sum(cube > per_layer_mean, axis=(0, 1))
 
 
+# ---------------------------------------------------------------------------
+# 3x3 neighbourhood patterns
+# ---------------------------------------------------------------------------
 
-## given a pixel section of 3 x 3
-## extract a star pattern around the middle target pixel
-## calculate the median of it
-##
-## 0 1 2        
-## 3 4 5  ->  2 4 6 8 
-## 6 7 8
-def star_pattern(section: np.ndarray) -> float:
+def _validate_3x3(section: np.ndarray) -> None:
     if section.shape != (3, 3):
-        raise ValueError('the section needs to be a 3x3 square!')
-    star = [
-        section[0, 1],
-        section[1, 0],
-        section[1, 2],
-        section[2, 1],
-        section[1, 1]
-    ]
+        raise ValueError("the section needs to be a 3x3 square!")
+
+
+def star_pattern(section: np.ndarray) -> float:
+    """
+    median of the 4-connected neighbours + center of a 3x3 section:
+
+        . 1 .         1
+        3 4 5   ->  3 4 5   (median of these 5)
+        . 7 .         7
+    """
+    _validate_3x3(section)
+    star = [section[0, 1], section[1, 0], section[1, 2], section[2, 1], section[1, 1]]
     return float(np.median(star))
-    
-##extracts the values around the center and calculates the median
+
 
 def square_pattern(section: np.ndarray) -> float:
-    if section.shape != (3, 3):
-        raise ValueError('the section needs to be a 3x3 square!')
-    outer_square = np.delete(section, 4)
-    return float(np.median(outer_square)) 
-
-#extract the pixel indices for high reflectance pixels
-def find_hotPixels(section: np.ndarray) -> tuple[int, int]:
-    val = np.max(section)
-    indices = np.argwhere(section == val)
-    return indices
-
-#extract the pixel indices for low reflectance pixels
-def find_coldPixels(section: np.ndarray) -> tuple[int, int]:
-    val = np.min(section)
-    indices = np.argwhere(section == val)
-    return indices
-
-# calculate the median value according to the interpolation algorithm
-# median of ((i + 1, j, k[i + 1, j]), (i, j + 1, k[i, j + 1]), (i - 1, j, k[i - 1, j]), (i, j - 1, k[i, j - 1]))
-# i++ -> -5, i-- -> +5, j++ -> +5, j-- -> -5
-
-def neighbours_compare(section_cube: np.ndarray, wl_matrix: np.ndarray) -> float:
-    h, w, bands = section_cube.shape
-    values = np.zeros(4)
-    if section_cube.shape != (3, 3):
-        raise ValueError('the section needs to be a 3x3 square')
-    
-    
-def plot_med_interVSnotInterp(interp, not_interp, wl_arr):
-    interp_median = np.median(
-        interp, axis = (0, 1)
-    )
-    not_interp_median = np.median(
-        not_interp, axis = (0, 1)
-    )
-    
-    plt.plot(wl_arr, 
-         interp_median,
-         'o--',
-         color = 'red',
-         label = 'interpolated'
-         )
-    plt.plot(wl_arr, 
-         not_interp_median,
-         'o--',
-         color = 'black',
-         label = 'not interpolated'
-         )
-
-    plt.grid(alpha = .5)
-    plt.legend()
-    plt.show()
-    
-def print_corrleation(arr1, arr2, wl):
-    for band in range(25):
-        corr = np.corrcoef(arr1[:, :, band], arr2[:, :, band])
-        print(f'{wl[band]} -> {corr[0, 1]}')
-        
-def pip1(non_inter_cube, inter_cube, center, size, wl_arr):
-    zone2_interp = cut.cut_cube(inter_cube, center, size)
-    zone2 = cut.cut_cube(non_inter_cube, center, size)
-    print_corrleation(zone2, zone2_interp, wl_arr)
-    plot_med_interVSnotInterp(zone2_interp, zone2, wl_arr)
-    
-    return zone2_interp, zone2
-    
-    
-def med_per_band(cube):
-    medians = np.zeros(cube.shape[2])
-    for band in range(cube.shape[2]):
-        medians[band] = star_pattern(cube[:,:, band])
-    return medians
+    """
+    median of the 8 pixels surrounding the center of a 3x3 section.
+    """
+    _validate_3x3(section)
+    outer_ring = np.delete(section, 4)
+    return float(np.median(outer_ring))
 
 
-def aproximate_distribution(interpolated_cube, not_interpoalted_cube, wl):
-    inter_median = np.median(
-        interpolated_cube, axis = (0, 1)
-    )
-    median = np.median(
-        not_interpoalted_cube, axis = (0, 1)
-    )
-    diff_med = np.abs(inter_median - median)
+def extreme_pixel_indices(section: np.ndarray, mode: str = "max") -> np.ndarray:
+    """
+    given a section extract mins or max
+    """
+    if mode not in ("max", "min"):
+        raise ValueError("mode must be 'max' or 'min'")
+    val = np.max(section) if mode == "max" else np.min(section)
     
-    plt.hist(diff_med)
+    return np.argwhere(section == val)
+
+# ---------------------------------------------------------------------------
+# interpolated vs. non-interpolated comparison
+# ---------------------------------------------------------------------------
+
+def plot_band_medians(
+    interp: np.ndarray,
+    not_interp: np.ndarray,
+    wl_arr: np.ndarray,
+    save_as: str | None = "band_medians.png",
+    show: bool = True,
+):
+    """
+    overlaid interpoalted and not interpolated median values for comparison
+    """
+    interp_median = np.median(interp, axis=(0, 1))
+    not_interp_median = np.median(not_interp, axis=(0, 1))
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.plot(wl_arr, interp_median, "o--", color="red", label="interpolated")
+    ax.plot(wl_arr, not_interp_median, "o--", color="black", label="not interpolated")
+    ax.grid(alpha=0.5)
+    ax.legend()
+
+    if save_as:
+        fig.savefig(_ensure_out_dir() / save_as, dpi=300)
+    if show:
+        plt.show()
+
+    return fig, ax
+
+
+def band_correlations(arr1: np.ndarray, arr2: np.ndarray, wl: np.ndarray) -> dict:
+    """
+    calculate the correlation matrices per band
+    """
+    results = {}
+    for band in range(arr1.shape[2]):
+        corr = np.corrcoef(arr1[:, :, band], arr2[:, :, band])[0, 1]
+        print(f"{wl[band]} -> {corr}")
+        results[wl[band]] = corr
+    return results
+
+
+def compare_zone(non_inter_cube, inter_cube, center, size, wl_arr) -> tuple:
+    """
+    extract the same ROI from both interpolated and compare them
+    returns the zone data + correlation matrices + plots
+    """
+    zone_interp = cut.cut_cube(inter_cube, center, size)
+    zone_ref = cut.cut_cube(non_inter_cube, center, size)
+    band_correlations(zone_ref, zone_interp, wl_arr)
+    plot_band_medians(zone_interp, zone_ref, wl_arr)
+    return zone_interp, zone_ref
+
+
+def median_difference_histogram(
+    interpolated_cube: np.ndarray,
+    not_interpolated_cube: np.ndarray,
+    save_as: str | None = "median_diff_hist.png",
+    show: bool = True,
+):
+    """
+    performs the median of interpolate and not interpolated data
+    return the histogram of the abs difference cube
+    """
+    inter_median = np.median(interpolated_cube, axis=(0, 1))
+    ref_median = np.median(not_interpolated_cube, axis=(0, 1))
+    diff_median = np.abs(inter_median - ref_median)
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.hist(diff_median, bins="auto", color="blue", alpha=0.6)
+    ax.set_xlabel("Absolute median difference")
+    ax.set_ylabel("Count")
+    ax.grid(alpha=0.5)
+
+    if save_as:
+        fig.savefig(_ensure_out_dir() / save_as, dpi=300)
+    if show:
+        plt.show()
+
+    return fig, ax

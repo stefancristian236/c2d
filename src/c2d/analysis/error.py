@@ -1,204 +1,139 @@
-import numpy as np
-from scipy.stats import norm, gennorm, laplace
-import matplotlib.pyplot as plt
 from pathlib import Path
-import os
+from typing import Sequence
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+from scipy.stats import rv_continuous, norm, gennorm, laplace
+from scipy.stats import kstest
+
+#define the output directory
+#removed if statements at every fit
+#unviersal
+OUT_DIR = Path("../../out/plots/distributions")
 
 
+#veriy path
+def _ensure_out_dir(dir_path: Path = OUT_DIR) -> Path:
+    dir_path.mkdir(parents=True, exist_ok=True)
+    return dir_path
 
 
-############################################################################
-## performa laplacian fitting
-## input an 1D array
-## returns the fig, axes for the plot
-def laplacian_fitting(arr : np.ndarray[float]):
-    
-    #### direcotry initiliszation
-    ### verify if the directory exists otherwise create it
-    dir_path = Path('../../out')
-    if dir_path.is_dir() == False:
-        os.makedirs('../../out')
-    dir_path = Path('../../out/plots')
-    if dir_path.is_dir() == False:
-        os.makedirs('../../out/plots')
-    dir_path = Path('../../out/plots/distributions')
-    if dir_path.is_dir() == False:
-        os.makedirs('../../out/plots/distributions')
-    ##########################################################
-    
-    #calculate fitting parameters
-    lb, ub = laplace.fit(arr)
-    
-    #generate the x axis
-    x = np.linspace(laplace.ppf(0.001, loc = lb, scale = ub),
-                    laplace.ppf(0.999, loc = lb, scale = ub),
-                    1000
-                    )
-    
-    #generate the statistic momnets
-    mean = laplace.mean(loc = lb, scale = ub)
-    median = laplace.median(loc = lb, scale = ub)
-    std = laplace.std(loc = lb, scale = ub)
-    var = laplace.var(loc = lb, scale = ub)
-    
-    #initiate plotting
-    fig, ax = plt.subplots(figsize = (8, 6))
-    
-    #plot histogram
-    ax.hist(arr,
-            bins = 'auto',
-            density = True,
-            alpha = .6,
-            color = 'blue',
-            label = 'Error Bins'
-            )
-    
-    #plot the pdf overlay
-    ax.plot(x,
-            laplace.pdf(x, loc = lb, scale = ub),
-            'r--',
-            lw = 1,
-            alpha = .8,
-            label = f"Fitted Laplace\nMean: {mean:.4f}\nMedian: {median:.4f}\nStd: {std:.4f}"
-            )
-    ax.set_xlim([np.min(x), np.max(x)])
-    ax.set_ylim([np.min(laplace.pdf(x, loc = lb, scale = ub)), np.max(laplace.pdf(x, loc = lb, scale = ub))])
-    ax.set_title('Laplacian Distribution')
-    ax.set_xlabel('Error Values')
-    ax.set_ylabel('Density')
-    ax.grid(alpha = .5)
-    ax.legend()
-    plt.savefig('../out/plots/distributions/LaplaceDist', dpi = 1000)
-    plt.show()
-    
-    return fig, ax
-###############################################################################################
+def fit_and_plot_distribution(
+    arr: np.ndarray,
+    dist: rv_continuous,
+    dist_label: str,
+    filename: str,
+    param_names: Sequence[str] | None = None,
+    bins: str | int = "auto",
+    dpi: int = 300,
+    show: bool = True,
+    ax: Axes | None = None,
+) -> tuple[Figure, Axes, tuple, float, float]:
+    """
+    fit any scipy.stats continuous distribution to `arr`, plot histogram +
+    fitted PDF, save to disk.
 
+    returns (fig, ax, fitted_params, ks_statistic, ks_pvalue).
+    """
+    out_dir = _ensure_out_dir()
 
-def generalised_gaussian_fitting(arr : np.ndarray[float]) -> tuple[Figure, Axes]:
-    
-    #### direcotry initiliszation
-    ### verify if the directory exists otherwise create it
-    dir_path = Path('../../out')
-    if dir_path.is_dir() == False:
-        os.makedirs('../../out')
-    dir_path = Path('../../out/plots')
-    if dir_path.is_dir() == False:
-        os.makedirs('../../out/plots')
-    dir_path = Path('../../out/plots/distributions')
-    if dir_path.is_dir() == False:
-        os.makedirs('../../out/plots/distributions')
-    ##########################################################
-    
-    #calculate fitting parameters   
-    beta, loc, scale = gennorm.fit(arr)
-    
-    #generate the x axis
-    x = np.linspace(
-        gennorm.ppf(0.01, beta, loc=loc, scale=scale),
-        gennorm.ppf(0.99, beta, loc=loc, scale=scale),
-        1000
+    params = dist.fit(arr)
+    frozen = dist(*params)
+
+    x = np.linspace(frozen.ppf(0.001), frozen.ppf(0.999), 1000)
+    pdf_vals = frozen.pdf(x)
+
+    mean, median, std = frozen.mean(), frozen.median(), frozen.std()
+
+    ks_stat, ks_pval = kstest(arr, dist.name, args=params)
+
+    if param_names is None:
+        param_label = ", ".join(f"{p:.4f}" for p in params)
+    else:
+        param_label = "\n".join(f"{n}: {p:.4f}" for n, p in zip(param_names, params))
+
+    label = (
+        f"Fitted {dist_label}\n"
+        f"{param_label}\n"
+        f"Mean: {mean:.4f}  Median: {median:.4f}  Std: {std:.4f}\n"
+        f"KS stat: {ks_stat:.4f}  (p={ks_pval:.3g})"
     )
-    
-    #calculate the statistical moments
-    mean = gennorm.mean(beta, loc=loc, scale=scale)
-    median = gennorm.median(beta, loc=loc, scale=scale)
-    std = gennorm.std(beta, loc=loc, scale=scale)
-    var = gennorm.var(beta, loc=loc, scale=scale)
-    
-    #initiate plotting
-    fig, ax = plt.subplots(figsize = (8, 6))
-    
-    #plot histogram
-    ax.hist(arr,
-            bins = 'auto',
-            density = True,
-            alpha = .6,
-            color = 'blue',
-            label = 'Error Bins'
-            )
-    
-    #plot the pdf overlay
-    ax.plot(x,
-            gennorm.pdf(x, beta, loc = loc, scale = scale),
-            'r--',
-            lw = 1,
-            alpha = .8,
-            label = f"Fitted Gaussian\nBeta: {beta:.4f}\nMean: {mean:.4f}\nMedian: {median:.4f}\nStd: {std:.4f}"
-            )
-    ax.set_xlim([np.min(x), np.max(x)])
-    ax.set_ylim([np.min(laplace.pdf(x, loc = loc, scale = scale)), np.max(laplace.pdf(x, loc = loc, scale = scale))])
-    ax.set_title('Generalised Gaussian Distribution')
-    ax.set_xlabel('Error Values')
-    ax.set_ylabel('Density')
-    ax.grid(alpha = .5)
-    ax.legend()
-    plt.savefig('../out/plots/distributions/GenGaussianDist', dpi = 1000)
-    plt.show()
-    
-    return fig, ax
-###########################################################################################
 
-def normal_fitting(arr : np.ndarray[float]):
-        
-    #### direcotry initiliszation
-    ### verify if the directory exists otherwise create it
-    dir_path = Path('../../out')
-    if dir_path.is_dir() == False:
-        os.makedirs('../../out')
-    dir_path = Path('../../out/plots')
-    if dir_path.is_dir() == False:
-        os.makedirs('../../out/plots')
-    dir_path = Path('../../out/plots/distributions')
-    if dir_path.is_dir() == False:
-        os.makedirs('../../out/plots/distributions')
-    ##########################################################
-    
-    #calculate fitting parameters   
-    loc, scale = norm.fit(arr)
-    
-    #generate the x axis
-    x = np.linspace(
-        norm.ppf(0.01, loc=loc, scale=scale),
-        norm.ppf(0.99, loc=loc, scale=scale),
-        1000
+    owns_fig = ax is None
+    if owns_fig:
+        fig, ax = plt.subplots(figsize=(8, 6))
+    else:
+        fig = ax.figure
+
+    ax.hist(arr, bins=bins, density=True, alpha=0.6, color="blue", label="Error Bins")
+    ax.plot(x, pdf_vals, "r--", lw=1, alpha=0.8, label=label)
+    ax.set_xlim(x.min(), x.max())
+    ax.set_ylim(0, pdf_vals.max() * 1.05)
+    ax.set_title(f"{dist_label} Distribution")
+    ax.set_xlabel("Error Values")
+    ax.set_ylabel("Density")
+    ax.grid(alpha=0.5)
+    ax.legend(fontsize=8)
+
+    if owns_fig:
+        fig.savefig(out_dir / filename, dpi=dpi)
+        if show:
+            plt.show()
+
+    return fig, ax, params, ks_stat, ks_pval
+
+
+def laplacian_fitting(arr: np.ndarray, **kwargs) -> tuple:
+    return fit_and_plot_distribution(
+        arr, laplace, "Laplace", "LaplaceDist.png",
+        param_names=["loc", "scale"], **kwargs,
     )
-    
-    #calculate the statistical moments
-    mean = norm.mean(loc=loc, scale=scale)
-    median = norm.median(loc=loc, scale=scale)
-    std = norm.std(loc=loc, scale=scale)
-    var = norm.var(loc=loc, scale=scale)
-    
-    #initiate plotting
-    fig, ax = plt.subplots(figsize = (8, 6))
-    
-    #plot histogram
-    ax.hist(arr,
-            bins = 'auto',
-            density = True,
-            alpha = .6,
-            color = 'blue',
-            label = 'Error Bins'
-            )
-    
-    #plot the pdf overlay
-    ax.plot(x,
-            norm.pdf(x, loc = loc, scale = scale),
-            'r--',
-            lw = 1,
-            alpha = .8,
-            label = f"Fitted Normal Distribution\nMean: {mean:.4f}\nMedian: {median:.4f}\nStd: {std:.4f}"
-            )
-    ax.set_xlim([np.min(x), np.max(x)])
-    ax.set_ylim([np.min(laplace.pdf(x, loc = loc, scale = scale)), np.max(laplace.pdf(x, loc = loc, scale = scale))])
-    ax.set_title('Normal Distribution')
-    ax.set_xlabel('Error Values')
-    ax.set_ylabel('Density')
-    ax.grid(alpha = .5)
-    ax.legend()
-    plt.savefig('../out/plots/distributions/NormalDist', dpi = 1000)
+
+
+def generalised_gaussian_fitting(arr: np.ndarray, **kwargs) -> tuple:
+    return fit_and_plot_distribution(
+        arr, gennorm, "Generalised Gaussian", "GenGaussianDist.png",
+        param_names=["beta", "loc", "scale"], **kwargs,
+    )
+
+
+def normal_fitting(arr: np.ndarray, **kwargs) -> tuple:
+    return fit_and_plot_distribution(
+        arr, norm, "Normal", "NormalDist.png",
+        param_names=["loc", "scale"], **kwargs,
+    )
+
+
+def compare_fits(arr: np.ndarray, filename: str = "ComparisonDist.png", dpi: int = 300) -> dict:
+    """
+    fit Normal, Laplace and Generalised Gaussian on the same axes 
+    """
+    out_dir = _ensure_out_dir()
+    fig, ax = plt.subplots(figsize=(9, 6))
+
+    ax.hist(arr, bins="auto", density=True, alpha=0.4, color="gray", label="Error Bins")
+
+    results = {}
+    for label, dist, names in [
+        ("Normal", norm, ["loc", "scale"]),
+        ("Laplace", laplace, ["loc", "scale"]),
+        ("Gen. Gaussian", gennorm, ["beta", "loc", "scale"]),
+    ]:
+        _, _, params, ks_stat, ks_pval = fit_and_plot_distribution(
+            arr, dist, label, "", param_names=names, ax=ax, show=False
+        )
+        results[label] = {"params": params, "ks_stat": ks_stat, "ks_pval": ks_pval}
+
+    ax.set_title("Distribution Comparison")
+    ax.set_xlabel("Error Values")
+    ax.set_ylabel("Density")
+    ax.grid(alpha=0.5)
+    ax.legend(fontsize=7)
+    fig.savefig(out_dir / filename, dpi=dpi)
     plt.show()
-    
-    return fig, ax
-###########################################################################################
+
+    best = min(results, key=lambda k: results[k]["ks_stat"])
+    print(f"Best fit by KS statistic: {best}")
+
+    return results
