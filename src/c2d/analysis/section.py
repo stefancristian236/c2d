@@ -1,41 +1,44 @@
-from xmlrpc.client import FastMarshaller
-
-import libs.c2d.cube_decube as c2d
-import libs.c2d.plot as plt2
-import libs.c2d.spectra_calculator as spc
-import libs.c2d.metric as mtr
-import importlib
-from astropy.io import fits
-from astropy.nddata import Cutout2D
 import numpy as np
 import matplotlib.pyplot as plt
-importlib.reload(c2d)
-importlib.reload(plt2)
-importlib.reload(spc)
-importlib.reload(mtr)
+from astropy.nddata import Cutout2D
 
-def pipeline(data, center, size, title, cut_flag = False):
-    if cut_flag == True:
-        section = []
-        for idx0 in range(data.shape[2]):
-            section.append(Cutout2D(data[:, :, idx0], center, size).data)
-        section = np.stack(section, axis = -1)
+from c2d.analysis import metrics as mtr 
+
+def pipeline(
+    data: np.ndarray, 
+    center: tuple, 
+    size: tuple, 
+    title: str, 
+    cut_flag: bool = False
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    processes 3D spectral data, extracts a cutout if requested, 
+    calculates macropixel errors, and saves a visualization.
+    """
+    if cut_flag:
+        section = np.stack(
+            [Cutout2D(data[:, :, z], center, size).data for z in range(data.shape[2])], 
+            axis=-1
+        )
     else:
         section = data
+        
+    # calculate errors using your metrics module
     x, y, z, err = mtr.macropixel_error(section)
     
-    print(x)
-    print(y)
-    print(z)
+    print(f"X: {x}\nY: {y}\nZ: {z}")
 
-    im = plt.imshow(err,
-                origin='lower',
-                cmap='magma',
-                vmin=np.min(err),
-                vmax=np.max(err))
+    fig, ax = plt.subplots()
+    im = ax.imshow(
+        err,
+        origin='lower',
+        cmap='magma',
+        vmin=np.min(err),
+        vmax=np.max(err)
+    )
 
-    plt.colorbar(im) 
-    plt.savefig(f'{title}', dpi=1000)
+    fig.colorbar(im, ax=ax) 
+    fig.savefig(f"{title}", dpi=1000)
     plt.show()
     
     return section, err
