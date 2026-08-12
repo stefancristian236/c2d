@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: c2d
+Version: 0.1.0
+Summary: A Python library for snapshot spectral array cubing and decubing.
+Author-email: Stefan <cristicristi532@gmail.com>
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: numpy>=1.22.0
+Requires-Dist: astropy>=5.0
+Requires-Dist: scipy>=1.8.0
+Requires-Dist: matplotlib>=3.5.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: mypy>=1.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"

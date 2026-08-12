@@ -1,7 +1,7 @@
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
-from .. import cutout as cut
+from c2d.core import cutout as cut
 
 # define output directories
 OUT_DIR = Path("../../out/plots/analysis")
