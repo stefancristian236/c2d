@@ -2,8 +2,6 @@
 top-level package initialization.
 """
 
-__version__ = "0.1.1"
-
 from c2d import analysis, core, io, utils
 
 from c2d.core import Cutout2D, cube, decube, get_tile_wavelengths, cut_cube, round_trip_check, spectra_pipeline
