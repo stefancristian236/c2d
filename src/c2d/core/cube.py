@@ -34,13 +34,14 @@ def get_tile_wavelengths(sensor_layout: np.ndarray, tile_x: int, tile_y: int) ->
     wavelength) used by cube()/decube().
     """
     h, w = sensor_layout.shape
-    if h % tile_x or w % tile_y:
-        raise ValueError(
-            f"sensor_layout shape {(h, w)} isn't evenly divisible by "
-            f"tile ({tile_x}, {tile_y})"
-        )
+    
+    h_trim = h - (h % tile_x)
+    w_trim = w - (w % tile_y)
+    
+    trimmed_layout = sensor_layout[:h_trim, :w_trim]
 
-    reshaped = sensor_layout.reshape(h // tile_x, tile_x, w // tile_y, tile_y)
+    reshaped = trimmed_layout.reshape(h_trim // tile_x, tile_x, w_trim // tile_y, tile_y)
+    
     raw_wl = np.median(reshaped, axis=(0, 2))
 
     wl_flatten = raw_wl.flatten()
