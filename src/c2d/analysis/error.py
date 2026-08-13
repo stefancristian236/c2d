@@ -8,9 +8,7 @@ from scipy.stats import rv_continuous, norm, gennorm, laplace
 from scipy.stats import kstest
 
 #define the output directory
-#removed if statements at every fit
-#unviersal
-OUT_DIR = Path("../../out/plots/distributions")
+OUT_DIR = Path("out/plots/distributions")
 
 
 #veriy path
@@ -25,7 +23,7 @@ def fit_and_plot_distribution(
     dist_label: str,
     filename: str,
     param_names: Sequence[str] | None = None,
-    bins: str | int = "auto",
+    bins: int | int = "auto",
     dpi: int = 300,
     show: bool = True,
     ax: Axes | None = None,
@@ -45,8 +43,11 @@ def fit_and_plot_distribution(
     pdf_vals = frozen.pdf(x)
 
     mean, median, std = frozen.mean(), frozen.median(), frozen.std()
-
-    ks_stat, ks_pval = kstest(arr, dist.name, args=params)
+    
+    if dist_label == "Normal":
+        ks_stat, ks_pval = kstest(arr, frozen.cdf)
+    else:
+        ks_stat, ks_pval = kstest(arr, dist.name, args=params)
 
     if param_names is None:
         param_label = ", ".join(f"{p:.4f}" for p in params)
