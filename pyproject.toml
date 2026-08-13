@@ -40,7 +40,7 @@ testpaths = [
 ]
 
 [tool.mypy]
-# Enforce strict typing across the package
+# enforce strict typing across the package
 strict = true
 warn_return_any = true
 warn_unused_configs = true
