@@ -106,7 +106,7 @@ def normal_fitting(arr: np.ndarray, **kwargs) -> tuple:
     )
 
 
-def compare_fits(arr: np.ndarray, filename: str = "ComparisonDist.png", dpi: int = 300) -> dict:
+def compare_fits(arr: np.ndarray, filename: str = "ComparisonDist.png", dpi: int = 1000) -> dict:
     """
     fit Normal, Laplace and Generalised Gaussian on the same axes 
     """

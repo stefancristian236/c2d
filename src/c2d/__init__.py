@@ -6,7 +6,7 @@ from c2d import analysis, core, io, utils
 
 from c2d.core import Cutout2D, cube, decube, get_tile_wavelengths, cut_cube, round_trip_check, spectra_pipeline
 
-from c2d.analysis import pipeline, rmse, laplacian_fitting, generalised_gaussian_fitting, normal_fitting
+from c2d.analysis import pipeline, rmse, laplacian_fitting, generalised_gaussian_fitting, normal_fitting, compare_fits
 
 from c2d.io import extract_parameters
 
@@ -35,6 +35,7 @@ __all__ = [
     "laplacian_fitting",
     "generalised_gaussian_fitting",
     "normal_fitting",
+    "compare_fits",
     
     # io API
     "extract_parameters",

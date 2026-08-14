@@ -17,7 +17,7 @@ def dirs(file_name):
 def spectra_pipeline(
     cubed_image : np.ndarray[float, float, float],
     wl : np.ndarray[float],
-    cut_ct : tuple[int, int],
+    cut_ct : tuple[int, int],   
     cut_size : tuple[int, int],
     title : str = None,
     tile_x : int = 5,

@@ -2,6 +2,7 @@ from c2d.analysis.error import (
     generalised_gaussian_fitting,
     laplacian_fitting,
     normal_fitting,
+    compare_fits
 )
 from c2d.analysis.interp import (
     band_correlations,
@@ -37,4 +38,5 @@ __all__ = [
     "macropixel_error",
     "rmse",
     "pipeline",
+    "compare_fits",
 ]
