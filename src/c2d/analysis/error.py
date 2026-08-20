@@ -1,3 +1,12 @@
+"""
+    a set of functions to fit and plot distributions to error data, including 
+    Normal, 
+    Laplace, and 
+    Generalised Gaussian distributions.
+"""
+
+
+
 from pathlib import Path
 from typing import Sequence
 import numpy as np
@@ -11,12 +20,12 @@ from scipy.stats import kstest
 OUT_DIR = Path("out/plots/distributions")
 
 
-#veriy path
+#veriy the existence of the folder
 def _ensure_out_dir(dir_path: Path = OUT_DIR) -> Path:
     dir_path.mkdir(parents=True, exist_ok=True)
     return dir_path
 
-
+#main function to fit and plot a distribution
 def fit_and_plot_distribution(
     arr: np.ndarray,
     dist: rv_continuous,
@@ -84,6 +93,9 @@ def fit_and_plot_distribution(
 
     return fig, ax, params, ks_stat, ks_pval
 
+"""
+    functions to fit specific distributions to error data and plot the results, including:
+"""
 
 def laplacian_fitting(arr: np.ndarray, **kwargs) -> tuple:
     return fit_and_plot_distribution(
